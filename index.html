@@ -1,0 +1,54 @@
+<html>
+<head>
+
+</head>
+<body>
+  <div style="display: flex; width: 100%; height: 100vh; align-items: center; justify-content: center;">
+    <div style="width: 500px; background-color: #efefef; border-radius: 20px; padding: 30px; text-align: center;">
+      <button disabled id="login" style="width: 100%">Login with MetaMask</button>
+    </div>
+  </div>
+
+<script>
+  if (typeof window.ethereum !== 'undefined') {
+    document.querySelector('#login').removeAttribute('disabled');
+  } else {
+    document.querySelector('#login').innerText = 'MetaMask not installed';
+  }
+
+  document.querySelector('#login').addEventListener('click', () => {
+    getAccount();
+  })
+
+  async function getAccount() {
+    const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+    const address = accounts[0];
+    console.log('address', address);
+    const { nonce } = await fetch(`/api/login/${address}/nonce`, { method: 'post' }).then(r => r.json());
+    console.log('nonce', nonce);
+    const sign = await signMessage(address, nonce);
+    console.log('sign', sign);
+    const verified = await verifySign(address, sign);
+    if (verified) {
+      document.querySelector('#login').removeAttribute('disabled');
+      document.querySelector('#login').innerText = address;
+    }
+  }
+
+  async function signMessage (address, nonce) {
+    const msg = `Authorization nonce: ${nonce}`;
+    const sign = await ethereum.request({
+      method: 'personal_sign',
+      params: [msg, address, 'Example password'],
+    });
+    return sign;
+  }
+
+  async function verifySign (address, sign) {
+    const { success } = await fetch(`/api/login/${address}/verify/${sign}`, { method: 'post' }).then(r => r.json());
+    console.log('signature is verified', success);
+    return success;
+  }
+</script>
+</body>
+</html>
